@@ -1,0 +1,45 @@
+/* prodcut carousal */
+
+/* Hide default slick arrows */
+.slick-prev::before,
+.slick-next::before {
+  display: none !important;
+}
+
+.slick-prev,
+.slick-next {
+  width: auto !important;
+  height: auto !important;
+  z-index: 2 !important;
+}
+
+/* Optional: Adjust arrow positions if needed */
+.slick-prev {
+  left: -35px !important;
+}
+
+.slick-next {
+  right: -35px !important;
+}
+
+/* Responsive adjustments for arrows */
+@media (max-width: 768px) {
+  .slick-prev {
+    left: -25px !important;
+  }
+  
+  .slick-next {
+    right: -25px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .slick-prev {
+    left: -15px !important;
+  }
+  
+  .slick-next {
+    right: -15px !important;
+  }
+}
+
