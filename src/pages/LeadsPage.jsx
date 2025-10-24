@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Pagination from "../components/Pagination";
 import { toast } from "react-toastify";
@@ -9,46 +10,54 @@ import { API_URL } from "../utils/api";
 export default function LeadsPage() {
   const [activeTab, setActiveTab] = useState("query");
   const [leads, setLeads] = useState([]);
+  const [queriesList, setQueriesList] = useState([]); // ✅ flattened list of all queries
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [searchType, setSearchType] = useState("name"); // ✅ Added
+  const [searchType, setSearchType] = useState("name");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ Fetch leads with pagination + search
+  /* -------------------------------------------------------------------------- */
+  /* 🔹 Fetch Leads with Pagination + Search */
+  /* -------------------------------------------------------------------------- */
   const fetchLeads = async (pageNum = 1, searchValue = "", type = "name") => {
     try {
       setLoading(true);
       setError("");
 
       const res = await axios.get(
-        `${API_URL}/leads/all?page=${pageNum}&limit=10&search=${searchValue}`
+        `${API_URL}/leads/all?page=${pageNum}&limit=10&search=${searchValue}&type=${type}`
       );
 
-      let filteredLeads = res.data.leads || [];
-
-      // ✅ Apply search type filter on frontend too (optional redundancy)
-      if (searchValue.trim()) {
-        const q = searchValue.toLowerCase();
-        if (type === "phone")
-          filteredLeads = filteredLeads.filter((l) =>
-            l.phone_number?.toLowerCase().includes(q)
-          );
-        if (type === "email")
-          filteredLeads = filteredLeads.filter((l) =>
-            l.email?.toLowerCase().includes(q)
-          );
-        if (type === "name")
-          filteredLeads = filteredLeads.filter((l) =>
-            l.personName?.toLowerCase().includes(q)
-          );
-      }
-
-      setLeads(filteredLeads);
+      const leadsData = res.data.leads || [];
+      setLeads(leadsData);
       setTotalPages(res.data.totalPages || 1);
       setPage(res.data.currentPage || 1);
+
+      // ✅ Flatten all queries with lead info
+      const allQueries = [];
+      leadsData.forEach((lead) => {
+        lead.queries?.forEach((q) => {
+          allQueries.push({
+            ...q,
+            lead_id: lead.lead_id,
+            lead_status: lead.status,
+            company_name: lead.company_name,
+            person: lead.persons?.[0] || {},
+          });
+        });
+      });
+
+      // ✅ Sort by created date (latest first)
+      allQueries.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      setQueriesList(allQueries);
     } catch (err) {
       console.error("Error fetching leads:", err);
       setError("Failed to load leads. Please try again later.");
@@ -59,9 +68,11 @@ export default function LeadsPage() {
 
   useEffect(() => {
     fetchLeads(1, "", searchType);
-  }, []);
+  }, [location.search]); // ✅ re-fetch when redirected after update
 
-  // ✅ Search handler
+  /* -------------------------------------------------------------------------- */
+  /* 🔍 Search Handler */
+  /* -------------------------------------------------------------------------- */
   const handleSearch = (e) => {
     e.preventDefault();
     if (!search.trim()) {
@@ -71,12 +82,16 @@ export default function LeadsPage() {
     fetchLeads(1, search, searchType);
   };
 
-  // ✅ Add new lead
+  /* -------------------------------------------------------------------------- */
+  /* ➕ Add New Lead */
+  /* -------------------------------------------------------------------------- */
   const handleAddLead = () => {
     navigate("/add-lead");
   };
 
-  // ✅ Pagination handlers
+  /* -------------------------------------------------------------------------- */
+  /* 🔄 Pagination */
+  /* -------------------------------------------------------------------------- */
   const handleNextPage = () => {
     if (page < totalPages) fetchLeads(page + 1, search, searchType);
   };
@@ -84,17 +99,16 @@ export default function LeadsPage() {
     if (page > 1) fetchLeads(page - 1, search, searchType);
   };
 
-  // ✅ Split data by type
-  const newQueries = leads.filter((lead) =>
-    lead.queries?.some(
-      (q) => q.status === "Created" || q.status === "Quotation"
-    )
-  );
-
+  /* -------------------------------------------------------------------------- */
+  /* 🧩 Separate Old Leads */
+  /* -------------------------------------------------------------------------- */
   const existingLeads = leads.filter(
     (lead) => lead.status === "Old" || lead.status === "Booked"
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* 🧱 UI */
+  /* -------------------------------------------------------------------------- */
   return (
     <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
       {/* Header */}
@@ -172,94 +186,96 @@ export default function LeadsPage() {
         <div className="text-center py-10 text-red-500 font-medium">
           {error}
         </div>
-      ) : (
+      ) : activeTab === "query" ? (
         <div className="overflow-x-auto bg-white rounded-xl shadow border border-gray-100">
-          {activeTab === "query" ? (
-            <table className="min-w-full text-sm">
-              <thead className="bg-gradient-to-r from-[#EAF3FF] to-[#F9FBFF] text-[#1A2980] font-medium uppercase text-xs tracking-wide">
-                <tr>
-                  <th className="p-4 text-left">#</th>
-                  <th className="p-4 text-left">Lead Name</th>
-                  <th className="p-4 text-left">Email</th>
-                  <th className="p-4 text-left">Phone</th>
-                  <th className="p-4 text-left">Service</th>
-                  <th className="p-4 text-left">Expected Delivery</th>
-                  <th className="p-4 text-left">Lead Status</th>
-                  <th className="p-4 text-left">Query Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {newQueries.length > 0 ? (
-                  newQueries.map((lead, index) =>
-                    lead.queries.map((query, qIndex) => (
-                      <tr
-                        key={`${lead._id}-${qIndex}`}
-                        className={`transition ${
-                          index % 2 === 0 ? "bg-white" : "bg-[#F7FAFF]"
-                        } hover:bg-[#EAF3FF]/60`}
-                      >
-                        <td className="p-4 text-gray-800 font-medium">
-                          {index + 1}
-                        </td>
-                        <td className="p-4 text-gray-800">{lead.personName}</td>
-                        <td className="p-4 text-gray-700">{lead.email}</td>
-                        <td className="p-4 text-gray-700">
-                          {lead.phone_number}
-                        </td>
-                        <td className="p-4 text-gray-700">
-                          {query.services.join(", ")}
-                        </td>
-                        <td className="p-4 text-gray-700">
-                          {new Date(
-                            query.expected_delivery_date
-                          ).toLocaleDateString()}
-                        </td>
-                        <td className="p-4 text-[#1A2980] font-medium">
-                          {lead.status}
-                        </td>
-                        <td
-                          className={`p-4 font-semibold ${
-                            query.status === "Created"
-                              ? "text-amber-600"
-                              : query.status === "Quotation"
-                              ? "text-blue-600"
-                              : query.status === "Booked"
-                              ? "text-green-600"
-                              : "text-gray-600"
-                          }`}
-                        >
-                          {query.status}
-                        </td>
-                      </tr>
-                    ))
-                  )
-                ) : (
-                  <tr>
+          <table className="min-w-full text-sm">
+            <thead className="bg-gradient-to-r from-[#EAF3FF] to-[#F9FBFF] text-[#1A2980] font-medium uppercase text-xs tracking-wide">
+              <tr>
+                <th className="p-4 text-left">#</th>
+                <th className="p-4 text-left">Lead Name</th>
+                <th className="p-4 text-left">Email</th>
+                <th className="p-4 text-left">Phone</th>
+                <th className="p-4 text-left">Service</th>
+                <th className="p-4 text-left">Expected Delivery</th>
+                <th className="p-4 text-left">Lead Status</th>
+                <th className="p-4 text-left">Query Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {queriesList.length > 0 ? (
+                queriesList.map((q, index) => (
+                  <tr
+                    key={`${q.query_id}-${index}`}
+                    onClick={() =>
+                      navigate(`/view-details/${q.lead_id}/${q.query_id}`)
+                    }
+                    className={`cursor-pointer transition ${
+                      index % 2 === 0 ? "bg-white" : "bg-[#F7FAFF]"
+                    } hover:bg-[#EAF3FF]/60`}
+                  >
+                    <td className="p-4 text-gray-800 font-medium">
+                      {index + 1}
+                    </td>
+                    <td className="p-4 text-gray-800">{q.person.name}</td>
+                    <td className="p-4 text-gray-700">{q.person.email}</td>
+                    <td className="p-4 text-gray-700">{q.person.phone}</td>
+                    <td className="p-4 text-gray-700">
+                      {q.services?.join(", ")}
+                    </td>
+                    <td className="p-4 text-gray-700">
+                      {new Date(q.expected_delivery_date).toLocaleDateString()}
+                    </td>
+                    <td className="p-4 text-[#1A2980] font-medium">
+                      {q.lead_status}
+                    </td>
                     <td
-                      colSpan="8"
-                      className="text-center py-4 text-gray-400 italic"
+                      className={`p-4 font-semibold ${
+                        q.status === "Created"
+                          ? "text-amber-600"
+                          : q.status === "Quotation"
+                          ? "text-blue-600"
+                          : q.status === "Booked"
+                          ? "text-green-600"
+                          : q.status === "Call Later"
+                          ? "text-purple-600"
+                          : "text-gray-600"
+                      }`}
                     >
-                      No Queries found
+                      {q.status}
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          ) : (
-            <table className="min-w-full text-sm">
-              <thead className="bg-gradient-to-r from-[#EAF3FF] to-[#F9FBFF] text-[#1A2980] font-medium uppercase text-xs tracking-wide">
+                ))
+              ) : (
                 <tr>
-                  <th className="p-4 text-left">#</th>
-                  <th className="p-4 text-left">Client</th>
-                  <th className="p-4 text-left">Company</th>
-                  <th className="p-4 text-left">Email</th>
-                  <th className="p-4 text-left">Phone</th>
-                  <th className="p-4 text-left">Status</th>
+                  <td
+                    colSpan="8"
+                    className="text-center py-4 text-gray-400 italic"
+                  >
+                    No Queries found
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {existingLeads.length > 0 ? (
-                  existingLeads.map((lead, index) => (
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-xl shadow border border-gray-100">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gradient-to-r from-[#EAF3FF] to-[#F9FBFF] text-[#1A2980] font-medium uppercase text-xs tracking-wide">
+              <tr>
+                <th className="p-4 text-left">#</th>
+                <th className="p-4 text-left">Client</th>
+                <th className="p-4 text-left">Company</th>
+                <th className="p-4 text-left">Email</th>
+                <th className="p-4 text-left">Phone</th>
+                <th className="p-4 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {existingLeads.length > 0 ? (
+                existingLeads.map((lead, index) => {
+                  const person = lead.persons?.[0] || {};
+                  return (
                     <tr
                       key={lead._id}
                       className={`transition ${
@@ -269,10 +285,10 @@ export default function LeadsPage() {
                       <td className="p-4 text-gray-800 font-medium">
                         {index + 1}
                       </td>
-                      <td className="p-4 text-gray-800">{lead.personName}</td>
+                      <td className="p-4 text-gray-800">{person.name}</td>
                       <td className="p-4 text-gray-700">{lead.company_name}</td>
-                      <td className="p-4 text-gray-700">{lead.email}</td>
-                      <td className="p-4 text-gray-700">{lead.phone_number}</td>
+                      <td className="p-4 text-gray-700">{person.email}</td>
+                      <td className="p-4 text-gray-700">{person.phone}</td>
                       <td
                         className={`p-4 font-semibold ${
                           lead.status === "Booked"
@@ -283,24 +299,24 @@ export default function LeadsPage() {
                         {lead.status}
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="text-center py-4 text-gray-400 italic"
-                    >
-                      No leads available
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+                  );
+                })
+              ) : (
+                <tr>
+                  <td
+                    colSpan="6"
+                    className="text-center py-4 text-gray-400 italic"
+                  >
+                    No leads available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* ✅ Pagination Component */}
+      {/* Pagination */}
       {!loading && leads.length > 0 && (
         <Pagination
           page={page}

@@ -1,10 +1,6 @@
 import React from "react";
 
-export default function Tabs({ activeTab, setActiveTab }) {
-  const tabs = [
-    { id: "service", label: "Service" },
-    { id: "reference", label: "Reference" },
-  ];
+export default function Tabs({ activeTab, setActiveTab , tabs}) {
 
   return (
     <div className="flex gap-6 border-b border-gray-200">

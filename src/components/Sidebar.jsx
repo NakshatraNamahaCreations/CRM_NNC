@@ -121,14 +121,14 @@ const menu = [
   { icon: Home, label: "Dashboard", route: "/dashboard" },
   { icon: Database, label: "Master", route: "/master" },
   { icon: Users, label: "Leads", route: "/leads" },
-  { icon: PhoneCall, label: "Follow-Ups" },
+  { icon: PhoneCall, label: "Follow-Ups" , route:"/follow-up"},
   { icon: FileText, label: "Quotations" },
   { icon: CreditCard, label: "Payments & Bookings" },
   { icon: ClipboardList, label: "Projects" },
   { icon: CheckSquare, label: "Tasks & Work Tracking" },
-  { icon: Calendar, label: "Calendar" },
+  // { icon: Calendar, label: "Calendar" },
   { icon: Bell, label: "Notifications" },
-  { icon: BarChart3, label: "Reports & Analytics" },
+  // { icon: BarChart3, label: "Reports & Analytics" },
   { icon: Settings, label: "Settings" },
 ];
 
