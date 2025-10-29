@@ -97,6 +97,8 @@ import ViewQueryDetails from "./components/lead/ViewQueryDetails"; // ✅ new im
 import Layout from "./pages/Layout";
 import "react-toastify/dist/ReactToastify.css";
 import FollowUpPage from "./pages/FollowUpPage";
+import FollowUpsByDate from "./components/followup/FollowUpsByDate";
+import CreateQuotation from "./components/quotation/CreateQuotation";
 
 export default function App() {
   return (
@@ -123,6 +125,11 @@ export default function App() {
                 <Route
                   path="/view-details/:leadId/:queryId"
                   element={<ViewQueryDetails />}
+                />
+                <Route path="/followups" element={<FollowUpsByDate />} />
+                <Route
+                  path="/create-quote/:leadId/:queryId"
+                  element={<CreateQuotation />}
                 />
               </Routes>
             </Layout>

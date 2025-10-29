@@ -1,49 +1,143 @@
+// import React, { useEffect, useState } from "react";
+// import FullCalendar from "@fullcalendar/react";
+// import dayGridPlugin from "@fullcalendar/daygrid";
+// import interactionPlugin from "@fullcalendar/interaction";
+// import axios from "axios";
+// import { toast } from "react-toastify";
+// import { useNavigate } from "react-router-dom";
+// import { API_URL } from "../../utils/api";
+
+// export default function CallFollowUps() {
+//   const [events, setEvents] = useState([]);
+//   const navigate = useNavigate();
+
+//   useEffect(() => {
+//     const fetchFollowUps = async () => {
+//       try {
+//         // 🔹 Fetch from your real API
+//         const res = await axios.get(`${API_URL}/call-history/all-followups`);
+//         const data = res.data.history || [];
+
+//         if (data.length === 0) {
+//           toast.info("No call follow-ups found");
+//           return;
+//         }
+
+//         // 🔹 Group by date (count how many follow-ups per date)
+//         const grouped = data.reduce((acc, item) => {
+//           const date = new Date(item.reschedule_date)
+//             .toISOString()
+//             .split("T")[0];
+//           if (!acc[date]) acc[date] = [];
+//           acc[date].push(item);
+//           return acc;
+//         }, {});
+
+//         // 🔹 Create events for FullCalendar
+//         const formatted = Object.entries(grouped).map(([date, items]) => ({
+//           title: `${items.length} follow-up${items.length > 1 ? "s" : ""}`,
+//           date,
+//           extendedProps: { date }, // store date for navigation
+//         }));
+
+//         setEvents(formatted);
+//       } catch (err) {
+//         console.error("Error fetching follow-ups:", err);
+//         toast.error("Failed to load call follow-ups");
+//       }
+//     };
+
+//     fetchFollowUps();
+//   }, []);
+
+//   // 🔹 When user clicks an event — redirect to details page
+//   const handleEventClick = (info) => {
+//     const { date } = info.event.extendedProps;
+//     if (!date) return;
+//     navigate(`/followups?date=${date}`);
+//   };
+
+//   return (
+//     <div className="px-2">
+//       <div className="bg-white shadow-md rounded-lg p-2">
+//         <FullCalendar
+//           plugins={[dayGridPlugin, interactionPlugin]}
+//           initialView="dayGridMonth"
+//           height="80vh"
+//           headerToolbar={{
+//             left: "prev,next today",
+//             center: "title",
+//             right: "dayGridMonth,dayGridWeek,dayGridDay",
+//           }}
+//           events={events}
+//           eventClick={handleEventClick}
+//           eventDisplay="block"
+//           eventContent={(arg) => (
+//             <div
+//               style={{
+//                 backgroundColor: "#1A2980",
+//                 color: "white",
+//                 borderRadius: "4px",
+//                 padding: "3px 5px",
+//                 fontSize: "13px",
+//                 cursor: "pointer",
+//                 textAlign: "center",
+//               }}
+//             >
+//               {arg.event.title}
+//             </div>
+//           )}
+//         />
+//       </div>
+//     </div>
+//   );
+// }
+
 import React, { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import { API_URL } from "../../utils/api";
 
 export default function CallFollowUps() {
   const [events, setEvents] = useState([]);
-
-  // Sample data fallback
-  const sampleData = [
-    {
-      _id: "68fb65e496f645542df6812b",
-      lead_id: "LEAD-001",
-      query_id: "QUERY-001",
-      person_name: "Sonali",
-      remarks: "Call has been rescheduled for 25 Oct",
-      reschedule_date: "2025-10-25T00:00:00.000Z",
-      createdAt: "2025-10-24T11:41:24.821Z",
-    },
-  ];
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchFollowUps = async () => {
       try {
-        // 🔹 Replace with your real API when ready
-        // const res = await axios.get(`${API_URL}/leads/call-followups`);
-        // const data = res.data.history;
+        // ✅ Correct API call (matches backend)
+        const res = await axios.get(`${API_URL}/call-history/follow-ups`);
+        const data = res.data.followUps || [];
 
-        const data = sampleData; // sample for now
+        if (data.length === 0) {
+          toast.info("No call follow-ups found");
+          return;
+        }
 
-        const formatted = data.map((item) => ({
-          title: `${item.person_name} (${item.lead_id})`,
-          date: item.reschedule_date,
-          extendedProps: {
-            remarks: item.remarks,
-            query_id: item.query_id,
-            lead_id: item.lead_id,
-          },
+        // ✅ Group by date
+        const grouped = data.reduce((acc, item) => {
+          const date = new Date(item.reschedule_date)
+            .toISOString()
+            .split("T")[0];
+          if (!acc[date]) acc[date] = [];
+          acc[date].push(item);
+          return acc;
+        }, {});
+
+        // ✅ Format events for FullCalendar
+        const formatted = Object.entries(grouped).map(([date, items]) => ({
+          title: `${items.length} follow-up${items.length > 1 ? "s" : ""}`,
+          date,
+          extendedProps: { date, items }, // store items for easy access
         }));
 
         setEvents(formatted);
       } catch (err) {
-        console.error("Error fetching follow-ups:", err);
+        console.error("❌ Error fetching follow-ups:", err);
         toast.error("Failed to load call follow-ups");
       }
     };
@@ -51,24 +145,20 @@ export default function CallFollowUps() {
     fetchFollowUps();
   }, []);
 
+  // 🔹 When user clicks an event — navigate to follow-up list by date
   const handleEventClick = (info) => {
-    const { lead_id, query_id, remarks } = info.event.extendedProps;
-    alert(
-      `Lead ID: ${lead_id}\nQuery ID: ${query_id}\nRemarks: ${remarks}`
-    );
+    const { date } = info.event.extendedProps;
+    if (!date) return;
+    navigate(`/followups?date=${date}`);
   };
 
   return (
-    <div className="px-6">
-      {/* <h2 className="text-2xl font-semibold mb-6 text-[#1A2980]">
-        Call Follow-Ups Calendar
-      </h2> */}
-
-      <div className="bg-white shadow-md rounded-lg p-4">
+    <div className="px-2">
+      <div className="bg-white shadow-md rounded-lg p-2">
         <FullCalendar
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
-          height="75vh"
+          height="80vh"
           headerToolbar={{
             left: "prev,next today",
             center: "title",

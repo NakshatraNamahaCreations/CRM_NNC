@@ -279,8 +279,9 @@ export default function ViewQueryDetails() {
   const [showModal, setShowModal] = useState(false);
   const [remarks, setRemarks] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
+  const [callDate, setCallDate] = useState(""); // ✅ New Field
   const [callPerson, setCallPerson] = useState("");
-  const [isModalVisible, setIsModalVisible] = useState(false); // For animation
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   /* -------------------------------------------------------------------------- */
   /* 🔹 Fetch Query Details */
@@ -313,15 +314,18 @@ export default function ViewQueryDetails() {
   const fetchCallHistory = async () => {
     try {
       const res = await axios.get(
-        `${API_URL}/leads/call-history/${leadId}/${queryId}`
+        `${API_URL}/call-history/all/${leadId}/${queryId}`
       );
-      setCallHistory(res.data.history || []);
+      // console.log("res call", res.)
+      setCallHistory(res.data.data || []);
     } catch (err) {
       console.error("Error fetching call history:", err);
     }
   };
 
-  // Inside handleStatusChange
+  /* -------------------------------------------------------------------------- */
+  /* 🔹 Handle Status Change */
+  /* -------------------------------------------------------------------------- */
   const handleStatusChange = async (newStatus) => {
     if (newStatus === "Call Later") {
       setShowModal(true);
@@ -336,7 +340,7 @@ export default function ViewQueryDetails() {
       });
       toast.success(`Query status updated to "${newStatus}"`);
       setStatus(newStatus);
-      navigate("/leads?refresh=true"); // ✅ trigger re-fetch
+      navigate("/leads?refresh=true");
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Failed to update query status");
@@ -345,9 +349,11 @@ export default function ViewQueryDetails() {
     }
   };
 
-  // Inside handleCallLaterSubmit
+  /* -------------------------------------------------------------------------- */
+  /* 🔹 Handle Call Later Submit */
+  /* -------------------------------------------------------------------------- */
   const handleCallLaterSubmit = async () => {
-    if (!remarks || !rescheduleDate || !callPerson) {
+    if (!callPerson || !callDate || !rescheduleDate || !remarks) {
       toast.warn("Please fill all fields!");
       return;
     }
@@ -358,14 +364,14 @@ export default function ViewQueryDetails() {
         status: "Call Later",
         remarks,
         reschedule_date: rescheduleDate,
+        call_date: callDate, // ✅ correctly sent
         person_name: callPerson,
-        created_by: "Admin",
       });
       toast.success("Call Later recorded successfully!");
       setStatus("Call Later");
       closeModal();
       fetchCallHistory();
-      navigate("/leads?refresh=true"); // ✅ refresh table
+      navigate("/leads?refresh=true");
     } catch (err) {
       console.error(err);
       toast.error("Failed to record call later info");
@@ -384,7 +390,8 @@ export default function ViewQueryDetails() {
       setRemarks("");
       setRescheduleDate("");
       setCallPerson("");
-    }, 200); // delay matches animation
+      setCallDate("");
+    }, 200);
   };
 
   /* -------------------------------------------------------------------------- */
@@ -437,7 +444,6 @@ export default function ViewQueryDetails() {
               value={status}
               onChange={(e) => handleStatusChange(e.target.value)}
               onClick={(e) => {
-                // 👇 Detect click when same option is selected again
                 if (e.target.value === "Call Later") {
                   handleStatusChange("Call Later");
                 }
@@ -567,6 +573,7 @@ export default function ViewQueryDetails() {
                 <th className="p-3 border">Date</th>
                 <th className="p-3 border">Person</th>
                 <th className="p-3 border">Remarks</th>
+                <th className="p-3 border">Call Date</th>
                 <th className="p-3 border">Reschedule</th>
               </tr>
             </thead>
@@ -579,6 +586,11 @@ export default function ViewQueryDetails() {
                   <td className="p-3 border">{c.person_name}</td>
                   <td className="p-3 border">{c.remarks}</td>
                   <td className="p-3 border">
+                    {c.call_date
+                      ? new Date(c.call_date).toLocaleDateString()
+                      : "-"}
+                  </td>
+                  <td className="p-3 border">
                     {new Date(c.reschedule_date).toLocaleDateString()}
                   </td>
                 </tr>
@@ -588,7 +600,7 @@ export default function ViewQueryDetails() {
         </div>
       )}
 
-      {/* 💫 Call Later Modal with Animation */}
+      {/* 💫 Call Later Modal */}
       {showModal && (
         <div
           className={`fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/40 z-50 transition-opacity duration-300 ${
@@ -616,6 +628,18 @@ export default function ViewQueryDetails() {
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#1A2980]/40 outline-none"
                   value={callPerson}
                   onChange={(e) => setCallPerson(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Call Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#1A2980]/40 outline-none"
+                  value={callDate}
+                  onChange={(e) => setCallDate(e.target.value)}
                 />
               </div>
 
@@ -653,9 +677,10 @@ export default function ViewQueryDetails() {
               </button>
               <button
                 onClick={handleCallLaterSubmit}
-                className="bg-gradient-to-r from-[#1A2980] to-[#26D0CE] text-white px-5 py-2 rounded-lg shadow hover:shadow-lg transition"
+                disabled={updating}
+                className="bg-gradient-to-r from-[#1A2980] to-[#26D0CE] text-white px-5 py-2 rounded-lg shadow hover:shadow-lg transition disabled:opacity-50"
               >
-                Save
+                {updating ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

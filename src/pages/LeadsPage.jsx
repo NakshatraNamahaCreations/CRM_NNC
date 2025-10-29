@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -192,13 +191,15 @@ export default function LeadsPage() {
             <thead className="bg-gradient-to-r from-[#EAF3FF] to-[#F9FBFF] text-[#1A2980] font-medium uppercase text-xs tracking-wide">
               <tr>
                 <th className="p-4 text-left">#</th>
+                <th className="p-4 text-left">Query No.</th>
                 <th className="p-4 text-left">Lead Name</th>
-                <th className="p-4 text-left">Email</th>
+                {/* <th className="p-4 text-left">Email</th> */}
                 <th className="p-4 text-left">Phone</th>
                 <th className="p-4 text-left">Service</th>
-                <th className="p-4 text-left">Expected Delivery</th>
+                {/* <th className="p-4 text-left">Expected Delivery</th> */}
                 <th className="p-4 text-left">Lead Status</th>
                 <th className="p-4 text-left">Query Status</th>
+                <th className="p-4 text-left">Action</th> {/* ✅ New Column */}
               </tr>
             </thead>
             <tbody>
@@ -206,25 +207,24 @@ export default function LeadsPage() {
                 queriesList.map((q, index) => (
                   <tr
                     key={`${q.query_id}-${index}`}
-                    onClick={() =>
-                      navigate(`/view-details/${q.lead_id}/${q.query_id}`)
-                    }
-                    className={`cursor-pointer transition ${
+                    className={`transition cursor-pointer ${
                       index % 2 === 0 ? "bg-white" : "bg-[#F7FAFF]"
                     } hover:bg-[#EAF3FF]/60`}
                   >
+
                     <td className="p-4 text-gray-800 font-medium">
                       {index + 1}
                     </td>
+                    <td>{q.query_id}</td>
                     <td className="p-4 text-gray-800">{q.person.name}</td>
-                    <td className="p-4 text-gray-700">{q.person.email}</td>
+                    {/* <td className="p-4 text-gray-700">{q.person.email}</td> */}
                     <td className="p-4 text-gray-700">{q.person.phone}</td>
                     <td className="p-4 text-gray-700">
                       {q.services?.join(", ")}
                     </td>
-                    <td className="p-4 text-gray-700">
+                    {/* <td className="p-4 text-gray-700">
                       {new Date(q.expected_delivery_date).toLocaleDateString()}
-                    </td>
+                    </td> */}
                     <td className="p-4 text-[#1A2980] font-medium">
                       {q.lead_status}
                     </td>
@@ -243,12 +243,35 @@ export default function LeadsPage() {
                     >
                       {q.status}
                     </td>
+
+                    {/* ✅ Action Buttons */}
+                    <td className="p-4 flex gap-2">
+                      <button
+                        onClick={() =>
+                          navigate(`/view-details/${q.lead_id}/${q.query_id}`)
+                        }
+                        className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      >
+                        View
+                      </button>
+
+                      {q.status === "Quotation" && (
+                        <button
+                          onClick={() =>
+                            navigate(`/create-quote/${q.lead_id}/${q.query_id}`)
+                          }
+                          className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200"
+                        >
+                          Create Quote
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan="9"
                     className="text-center py-4 text-gray-400 italic"
                   >
                     No Queries found
